@@ -2,10 +2,15 @@ import math
 import sys
 
 import pygame
+from pygame.math import Vector2
 
 clock = pygame.time.Clock()
 
+# 450 is the half of the display width
+camera_speed = 10
+camera = Vector2(450, 0)
 
+# https://pypi.org/project/pathfinding/
 # Картинка тайла 128х128
 # клетка d1=128px, d2=64px
 # сторона ромба = 64px
@@ -24,7 +29,7 @@ def round_half_up(n, decimals=0):
 def cart_to_iso(cartesian):
     # https://www.youtube.com/watch?v=KvSjJ-kdGio
     x, y = tuple(cartesian)
-    converted = pygame.math.Vector2()
+    converted = Vector2()
     converted.x = x - y
     converted.y = (x + y) / 2
     return converted
@@ -33,7 +38,7 @@ def cart_to_iso(cartesian):
 def iso_to_cart(iso):
     # https://www.youtube.com/watch?v=KvSjJ-kdGio
     x, y = tuple(iso)
-    converted = pygame.math.Vector2()
+    converted = Vector2()
     converted.x = (x + y * 2) / 2
     converted.y = -x + converted.x
     return converted
@@ -47,39 +52,102 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
         self.image = pygame.image.load('farmer.png').convert_alpha()
 
-        pos = pygame.math.Vector2(*marked) * 64
+        pos = Vector2(*marked) * 64
         pos = cart_to_iso(pos)
-        # TODO add camera offset
         # 450 + 0 - 64, 64 - 64 + 42
         # pos.x += 450 + 0 - 64
         # pos.y += 64 - 64 - 34
         # pos.x += 34
-        pos.y += 42
+        # pos.y += 42
 
-        self.rect = self.image.get_rect(bottomleft=pos)
+        self.pos = pos + (0, 42)
+        self.last_pos = Vector2(self.pos)
+        self.next_pos = Vector2(self.pos)
+        self.walk_buffer = 50
+        self.last_update = pygame.time.get_ticks()
 
-    def update(self):
+        self.speed = 2
+        self.direction = Vector2(0, 0)
+        self.between_tiles = False
+
+        self.rect = self.image.get_rect(bottomleft=self.pos)
+
+        self.shift = Vector2(0, 0)
+
+    def update(self, *, shift: Vector2):
+        if self.shift != shift:
+            delta = shift - self.shift
+            self.shift = Vector2(shift)
+            self.pos += delta
+            self.last_pos += delta
+            self.next_pos += delta
+
         self.get_inputs()
 
+        # self.rect = self.image.get_rect(bottomleft=self.pos + Vector2(0, 42))
+
+        if self.pos != self.next_pos:
+            delta = self.next_pos - self.pos
+            if delta.length() > cart_to_iso(self.direction * self.speed).length():
+                self.pos += cart_to_iso(self.direction * self.speed)
+            else:
+                self.pos = Vector2(self.next_pos)
+                self.direction = Vector2(0, 0)
+                self.between_tiles = False
+
+        self.rect.bottomleft = self.pos
+
     def get_inputs(self):
+        now = pygame.time.get_ticks()
         keys = pygame.key.get_pressed()
-        # скорость должна быть чётной
-        if keys[pygame.K_UP]:
-            vector = cart_to_iso((0, -2))
-            self.rect.x += vector.x
-            self.rect.y += vector.y
-        if keys[pygame.K_DOWN]:
-            vector = cart_to_iso((0, 2))
-            self.rect.x += vector.x
-            self.rect.y += vector.y
-        if keys[pygame.K_LEFT]:
-            vector = cart_to_iso((-2, 0))
-            self.rect.x += vector.x
-            self.rect.y += vector.y
-        if keys[pygame.K_RIGHT]:
-            vector = cart_to_iso((2, 0))
-            self.rect.x += vector.x
-            self.rect.y += vector.y
+
+        if now - self.last_update > self.walk_buffer:
+            self.last_update = now
+            # скорость должна быть чётной
+            new_direction = Vector2(0, 0)
+            if self.direction.y == 0:
+                if keys[pygame.K_LEFT]:
+                    new_direction = Vector2(-1, 0)
+                elif keys[pygame.K_RIGHT]:
+                    new_direction = Vector2(1, 0)
+            if self.direction.x == 0:
+                if keys[pygame.K_UP]:
+                    new_direction = Vector2(0, -1)
+                elif keys[pygame.K_DOWN]:
+                    new_direction = Vector2(0, 1)
+
+            if new_direction != Vector2(0, 0):
+                self.direction = new_direction
+                self.between_tiles = True
+                TILESIZE = 64
+                cart = iso_to_cart(self.rect.bottomleft - camera)
+                current_index = cart.x // TILESIZE, cart.y // TILESIZE
+                self.last_pos = cart_to_iso(
+                    Vector2(current_index) * TILESIZE
+                    ) + Vector2(0, 42)
+                print(camera)
+                self.next_pos = self.last_pos + cart_to_iso(self.direction * TILESIZE) + camera
+                # res = self.pos + cart_to_iso(self.direction * 64)
+                # print('res', res)
+                # self.next_pos = res
+                print('next', self.next_pos)
+
+        # if keys[pygame.K_UP]:
+        #     vector = cart_to_iso((0, -2))
+        #     self.rect.x += vector.x
+        #     self.rect.y += vector.y
+        # if keys[pygame.K_DOWN]:
+        #     vector = cart_to_iso((0, 2))
+        #     self.rect.x += vector.x
+        #     self.rect.y += vector.y
+        # if keys[pygame.K_LEFT]:
+        #     vector = cart_to_iso((-2, 0))
+        #     self.rect.x += vector.x
+        #     self.rect.y += vector.y
+        # if keys[pygame.K_RIGHT]:
+        #     vector = cart_to_iso((2, 0))
+        #     self.rect.x += vector.x
+        #     self.rect.y += vector.y
 
 
 def main():
@@ -93,9 +161,6 @@ def main():
     grass_img.set_colorkey((0, 0, 0))
     grass_img_marked = pygame.image.load('my_grass_scaled_marked.png').convert()
     grass_img_marked.set_colorkey((0, 0, 0))
-
-    # 450 is the half of the display width
-    camera = pygame.math.Vector2(0, 0)
 
     player = pygame.sprite.GroupSingle()
     player_sprite = Player((450 + 0 - 64, 64 - 64 + 42))
@@ -119,19 +184,14 @@ def main():
         # двигаем все спрайты уровня
         # поверхности, которые не спрайты будут рисоваться сразу со сдвигом камеры
         keys = pygame.key.get_pressed()
-        camera_spped = 10
         if keys[pygame.K_w]:
-            camera.y += camera_spped
-            player.sprite.rect.y += camera_spped
+            camera.y += camera_speed
         if keys[pygame.K_s]:
-            camera.y += -camera_spped
-            player.sprite.rect.y += -camera_spped
+            camera.y += -camera_speed
         if keys[pygame.K_a]:
-            camera.x += camera_spped
-            player.sprite.rect.x += camera_spped
+            camera.x += camera_speed
         if keys[pygame.K_d]:
-            camera.x += -camera_spped
-            player.sprite.rect.x += -camera_spped
+            camera.x += -camera_speed
 
         for x in range(40):
             for y in range(40):
@@ -148,10 +208,9 @@ def main():
                 else:
                     display.blit(grass_img, (camera.x + x1, camera.y + y1))
                 # OR!!!
-                # pos = pygame.math.Vector2(x, y) * 64
+                # pos = Vector2(x, y) * 64
                 # pos = cart_to_iso(pos)
                 # display.blit(grass_img, (camera.x + pos.x, camera.y + pos.y))
-
 
                 # pygame.draw.rect(display, (255, 255, 255), pygame.Rect(x * 16, y * 16, 16, 16), 1)
 
@@ -163,7 +222,7 @@ def main():
                 #     player.add(player_sprite)
                 #     player.draw(display)
 
-        player.update()
+        player.update(shift=camera)
         player.draw(display)
 
         # for y in range(20):
