@@ -5,9 +5,14 @@ import pygame
 CELL_WIDTH = 128
 CELL_HEIGHT = int(CELL_WIDTH / 2)
 CELL_SIDE = 64  # Cartesian cell width
-CELL_CENTER_FROM_TOP = int(CELL_SIDE / 2)
 TILE_WIDTH = CELL_WIDTH
 TILE_HEIGHT = TILE_WIDTH
+# For 2D Isometric Tile Starter Pack
+CELL_CENTER = (74, 32)
+# Я выставляю тайлы именно по центру изометрической проекции по таким причинам:
+# 1. У изображений могут быть прозрачные отступы по краям, как в 2D Isometric Tile Starter Pack
+# 2. Мне вроде как удобнее выставлять спрайт игрока, хотя конечно можно просто брать смещения
+# Из минусов, наверно будет неудобно выставлять тайлы по z оси
 
 K_ц = 1094
 K_ы = 1099

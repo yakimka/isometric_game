@@ -33,7 +33,7 @@ class Game:
                     if event.key == pygame.K_ESCAPE:
                         pygame.quit()
                         sys.exit()
-                    print(event.key, event.unicode)
+                    # print(event.key, event.unicode)
 
             self.location.update()
 

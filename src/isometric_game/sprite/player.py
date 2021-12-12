@@ -4,7 +4,9 @@ from pygame.math import Vector2
 from isometric_game import constants, STATIC_IMAGES_DIR
 from isometric_game.constants import Action, CELL_SIDE
 from isometric_game.utils.asset import load_image
-from isometric_game.utils.grid import cartesian_to_isometric, isometric_to_cartesian
+from isometric_game.utils.grid import (
+    cartesian_to_isometric, cell_origin_coordinates, grid_to_isometric_coordinates,
+)
 
 
 class PlayerSprite(pygame.sprite.Sprite):
@@ -12,14 +14,18 @@ class PlayerSprite(pygame.sprite.Sprite):
         super().__init__()
 
         self.image_bottom_offset = 8
-        self.image = load_image('farmer', STATIC_IMAGES_DIR).convert_alpha()
+        self.image = load_image('farmer', STATIC_IMAGES_DIR)
 
-        pos = cartesian_to_isometric(Vector2(grid_coordinates) * constants.CELL_WIDTH)
-        cell_top_offset = Vector2(0, constants.CELL_CENTER_FROM_TOP)
+        self.shift = Vector2(0, 0)
         # TODO maybe set in tile options
         player_image_offset = Vector2(0, self.image_bottom_offset)
 
-        self.pos = pos + cell_top_offset + player_image_offset
+        screen_coordinates = grid_to_isometric_coordinates(
+            grid=grid_coordinates,
+            cell_side=constants.CELL_SIDE,
+            camera_shift=self.shift,
+        )
+        self.pos = screen_coordinates + player_image_offset
         self.last_pos = Vector2(self.pos)
         self.next_pos = Vector2(self.pos)
         self.walk_buffer = 50
@@ -29,8 +35,7 @@ class PlayerSprite(pygame.sprite.Sprite):
         self.direction = Vector2(0, 0)
         self.between_tiles = False
 
-        self.rect = self.image.get_rect(bottomleft=self.pos)
-        self.shift = Vector2(0, 0)
+        self.rect = self.image.get_rect(midbottom=self.pos)
 
     def update(self, *, shift: Vector2):
         if self.shift != shift:
@@ -50,7 +55,7 @@ class PlayerSprite(pygame.sprite.Sprite):
                 self.direction = Vector2(0, 0)
                 self.between_tiles = False
 
-        self.rect.bottomleft = self.pos
+        self.rect.midbottom = self.pos
 
     def get_inputs(self):
         now = pygame.time.get_ticks()
@@ -73,9 +78,15 @@ class PlayerSprite(pygame.sprite.Sprite):
             if new_direction != Vector2(0, 0):
                 self.direction = new_direction
                 self.between_tiles = True
-                cart = isometric_to_cartesian(self.rect.bottomleft - self.shift)
-                current_index = cart.x // CELL_SIDE, cart.y // CELL_SIDE
-                self.last_pos = cartesian_to_isometric(
-                    Vector2(current_index) * CELL_SIDE
-                ) + Vector2(0, 42)
-                self.next_pos = self.last_pos + cartesian_to_isometric(self.direction * CELL_SIDE) + self.shift
+
+                self.last_pos = cell_origin_coordinates(
+                    isometric=self.rect.midbottom,
+                    cell_side=CELL_SIDE,
+                    camera_shift=self.shift,
+                    tile_shift=constants.CELL_CENTER,
+                ) + Vector2(0, self.image_bottom_offset)
+                self.next_pos = (
+                        self.last_pos
+                        + cartesian_to_isometric(self.direction * CELL_SIDE)
+                        + self.shift
+                )

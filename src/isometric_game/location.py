@@ -2,11 +2,11 @@ import pygame
 from pygame.math import Vector2
 
 from . import STATIC_IMAGES_DIR
-from .constants import Action, CAMERA_SPEED, CELL_SIDE
+from .constants import Action, CAMERA_SPEED, CELL_SIDE, CELL_CENTER
 from .sprite.player import PlayerSprite
+from .sprite.tile import TileSprite
 from .utils.asset import load_image
-from .utils.grid import cartesian_to_isometric, isometric_to_cartesian
-from .utils.math import round_half_up
+from .utils.grid import isometric_to_grid_coordinates
 
 
 class Location:
@@ -26,13 +26,14 @@ class Location:
     def load_tiles_database(self):
         # TODO load all resources for map
         #   resource must be with additional information
-        grass_img = load_image('grass', STATIC_IMAGES_DIR).convert_alpha()
+        grass_img = load_image('grass2', STATIC_IMAGES_DIR).convert_alpha()
         self.tiles_database['G'] = grass_img
 
     def build(self):
         """
         Method for precache map etc.
         """
+        self.builded = False
 
     def update(self):
         # TODO get color from map
@@ -40,25 +41,38 @@ class Location:
         self.get_inputs()
         self.camera.update()
 
-        for x, row in enumerate(self.map):
-            for y, tile_sign in enumerate(row):
-                if tile_sign[0] in self.tiles_database:
-                    tile = self.tiles_database[tile_sign[0]]
-                    pos = cartesian_to_isometric((Vector2(x, y) * CELL_SIDE) - Vector2(10, 10))
-                    self.display.blit(tile, self.camera.shift + pos)
-                if tile_sign[-1] == 'P' and self.player.sprite is None:
-                    player_sprite = PlayerSprite(grid_coordinates=(x, y))
-                    self.player.add(player_sprite)
+        # TODO refactor
+        if not self.builded:
+            for x, row in enumerate(self.map):
+                for y, tile_sign in enumerate(row):
+                    # if tile_sign[0] in self.tiles_database:
+                    #     tile = self.tiles_database[tile_sign[0]]
+                    #     pos = cartesian_to_isometric((Vector2(x, y) * CELL_SIDE) - Vector2(10, 10))
+                    #     self.display.blit(tile, self.camera.shift + pos)
+                    if tile_sign[0] in self.tiles_database:
+                        tile = TileSprite(grid_coordinates=(x, y), name='grass2')
+                        self.all_sprites.add(tile)
+                    if tile_sign[-1] == 'P' and self.player.sprite is None:
+                        player_sprite = PlayerSprite(grid_coordinates=(x, y))
+                        self.player.add(player_sprite)
+                        self.all_sprites.add(player_sprite)
+            self.builded = True
 
-        self.player.update(shift=self.camera.shift)
+        self.all_sprites.update(shift=self.camera.shift)
+        self.all_sprites.draw(self.display)
         self.player.draw(self.display)
 
     def get_inputs(self):
         left, middle, right = pygame.mouse.get_pressed()
         if left:
-            pos = pygame.mouse.get_pos()
-            pos = isometric_to_cartesian(pos - self.camera.shift)
-            print(round_half_up(pos[0] / CELL_SIDE) - 1, round_half_up(pos[1] / CELL_SIDE))
+            print(
+                isometric_to_grid_coordinates(
+                    isometric=pygame.mouse.get_pos(),
+                    cell_side=CELL_SIDE,
+                    camera_shift=self.camera.shift,
+                    tile_shift=CELL_CENTER
+                )
+            )
 
 
 class Camera:
