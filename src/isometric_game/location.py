@@ -6,7 +6,7 @@ from .constants import Action, CAMERA_SPEED, CELL_SIDE, CELL_CENTER
 from .sprite.player import PlayerSprite
 from .sprite.tile import TileSprite
 from .utils.asset import load_image
-from .utils.grid import isometric_to_grid_coordinates
+from .utils.grid import isometric_to_cartesian, isometric_to_grid_coordinates
 
 
 class Location:
@@ -53,7 +53,7 @@ class Location:
                         tile = TileSprite(grid_coordinates=(x, y), name='grass2')
                         self.all_sprites.add(tile)
                     if tile_sign[-1] == 'P' and self.player.sprite is None:
-                        player_sprite = PlayerSprite(grid_coordinates=(x, y))
+                        player_sprite = PlayerSprite(grid_coordinates=(x, y), location=self)
                         self.player.add(player_sprite)
                         self.all_sprites.add(player_sprite)
             self.builded = True
@@ -67,12 +67,19 @@ class Location:
         if left:
             print(
                 isometric_to_grid_coordinates(
-                    isometric=pygame.mouse.get_pos(),
+                    self.get_coordinates_under_cursor(),
                     cell_side=CELL_SIDE,
-                    camera_shift=self.camera.shift,
-                    tile_shift=CELL_CENTER
                 )
             )
+
+    def get_coordinates_under_cursor(self):
+        return self.screen_to_world_coordinates(pygame.mouse.get_pos())
+
+    def screen_to_world_coordinates(self, isometric):
+        """
+        Calculate "world" isometric coordinates
+        """
+        return isometric + Vector2(CELL_CENTER) - self.camera.shift
 
 
 class Camera:

@@ -21,9 +21,9 @@ class TileSprite(pygame.sprite.Sprite):
         self.shift = Vector2(0, 0)
 
         screen_coordinates = grid_to_isometric_coordinates(
-            grid=grid_coordinates,
+            grid_coordinates,
             cell_side=constants.CELL_SIDE,
-            camera_shift=self.shift
+            shift=self.shift
         )
         _, y = constants.CELL_CENTER
         cell_top_offset = Vector2(0, y)

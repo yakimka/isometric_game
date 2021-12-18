@@ -10,9 +10,10 @@ from isometric_game.utils.grid import (
 
 
 class PlayerSprite(pygame.sprite.Sprite):
-    def __init__(self, grid_coordinates):
+    def __init__(self, grid_coordinates, location):
         super().__init__()
 
+        self.location = location
         self.image_bottom_offset = 8
         self.image = load_image('farmer', STATIC_IMAGES_DIR)
 
@@ -23,7 +24,7 @@ class PlayerSprite(pygame.sprite.Sprite):
         screen_coordinates = grid_to_isometric_coordinates(
             grid=grid_coordinates,
             cell_side=constants.CELL_SIDE,
-            camera_shift=self.shift,
+            shift=self.shift,
         )
         self.pos = screen_coordinates + player_image_offset
         self.last_pos = Vector2(self.pos)
@@ -80,10 +81,8 @@ class PlayerSprite(pygame.sprite.Sprite):
                 self.between_tiles = True
 
                 self.last_pos = cell_origin_coordinates(
-                    isometric=self.rect.midbottom,
+                    self.location.screen_to_world_coordinates(self.rect.midbottom),
                     cell_side=CELL_SIDE,
-                    camera_shift=self.shift,
-                    tile_shift=constants.CELL_CENTER,
                 ) + Vector2(0, self.image_bottom_offset)
                 self.next_pos = (
                         self.last_pos

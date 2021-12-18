@@ -26,18 +26,17 @@ def isometric_to_cartesian(isometric):
     return converted
 
 
-def isometric_to_grid_coordinates(isometric, cell_side, camera_shift, tile_shift=(0, 0)):
-    pos = isometric + Vector2(tile_shift)
-    x, y = isometric_to_cartesian(pos - camera_shift)
+def isometric_to_grid_coordinates(isometric, cell_side):
+    x, y = isometric_to_cartesian(isometric)
     return round_half_up(x / cell_side) - 1, round_half_up(y / cell_side)
 
 
-def grid_to_isometric_coordinates(grid, cell_side, camera_shift):
+def grid_to_isometric_coordinates(grid, cell_side, shift=(0, 0)):
     screen = cartesian_to_isometric(Vector2(grid) * cell_side)
-    return screen + camera_shift
+    return screen + shift
 
 
-def cell_origin_coordinates(isometric, cell_side, camera_shift, tile_shift=(0, 0)):
+def cell_origin_coordinates(isometric, cell_side):
     """
     Get cell origin (topleft, midbottom, etc.) coordinates by any coordinates in that cell.
 
@@ -45,8 +44,6 @@ def cell_origin_coordinates(isometric, cell_side, camera_shift, tile_shift=(0, 0
     """
     grid = isometric_to_grid_coordinates(
         isometric,
-        cell_side,
-        camera_shift,
-        tile_shift
+        cell_side=cell_side,
     )
-    return grid_to_isometric_coordinates(grid, cell_side, camera_shift=(0, 0))
+    return grid_to_isometric_coordinates(grid, cell_side)
