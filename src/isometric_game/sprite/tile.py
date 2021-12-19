@@ -1,8 +1,7 @@
 import pygame
 from pygame import Vector2
 
-from isometric_game import constants, STATIC_IMAGES_DIR
-from isometric_game.utils.asset import load_image
+from isometric_game import constants
 from isometric_game.utils.grid import grid_to_isometric_coordinates
 
 
@@ -13,11 +12,10 @@ from isometric_game.utils.grid import grid_to_isometric_coordinates
 #   а не на низ картинки)
 #   анимация это или статический тайл
 class TileSprite(pygame.sprite.Sprite):
-    def __init__(self, *groups, grid_coordinates, name):
+    def __init__(self, *groups, grid_coordinates, surface):
         super().__init__(*groups)
 
-        self.name = name
-        self.image = load_image('grass2', STATIC_IMAGES_DIR)
+        self.image = surface
         self.shift = Vector2(0, 0)
 
         screen_coordinates = grid_to_isometric_coordinates(
@@ -28,7 +26,6 @@ class TileSprite(pygame.sprite.Sprite):
         _, y = constants.CELL_CENTER
         cell_top_offset = Vector2(0, y)
         self.rect = self.image.get_rect(midtop=screen_coordinates - cell_top_offset)
-
 
     def update(self, *, shift: Vector2):
         if self.shift != shift:

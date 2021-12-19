@@ -15,7 +15,7 @@ class PlayerSprite(pygame.sprite.Sprite):
 
         self.location = location
         self.image_bottom_offset = 8
-        self.image = load_image('farmer', STATIC_IMAGES_DIR)
+        self.image = load_image(STATIC_IMAGES_DIR / 'farmer.png')
 
         self.shift = Vector2(0, 0)
         # TODO maybe set in tile options

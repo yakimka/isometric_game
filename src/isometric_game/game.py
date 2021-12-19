@@ -2,7 +2,9 @@ import sys
 
 import pygame
 
+from . import MAPS_DIR
 from .location import Camera, Location
+from .utils import map
 
 
 class Game:
@@ -12,13 +14,9 @@ class Game:
         self.camera = Camera()
         # TODO settings and injecting it to another classes
 
-        # TODO make map format and read data from it
-        #   choose level based on game state
-        #   DI levels
-        map = [['G' for _ in range(40)] for _ in range(40)]
-        map[0][0] = 'GP'
+        map_reader = map.Reader('test_level.json', MAPS_DIR)
         self.location = Location(
-            map=map,
+            reader=map_reader,
             display=self.display,
             camera=self.camera,
         )
@@ -33,7 +31,7 @@ class Game:
                     if event.key == pygame.K_ESCAPE:
                         pygame.quit()
                         sys.exit()
-                    # print(event.key, event.unicode)
+                    print(event.key, event.unicode)
 
             self.location.update()
 

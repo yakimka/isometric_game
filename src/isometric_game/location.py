@@ -1,62 +1,56 @@
+from typing import Protocol
+
 import pygame
 from pygame.math import Vector2
 
-from . import STATIC_IMAGES_DIR
-from .constants import Action, CAMERA_SPEED, CELL_SIDE, CELL_CENTER
+from .constants import Action, CAMERA_SPEED, CELL_CENTER, CELL_SIDE
 from .sprite.player import PlayerSprite
 from .sprite.tile import TileSprite
-from .utils.asset import load_image
-from .utils.grid import isometric_to_cartesian, isometric_to_grid_coordinates
+from .utils import map
+from .utils.grid import isometric_to_grid_coordinates
+
+
+class MapReader(Protocol):
+    def read(self) -> map.Map:
+        pass
 
 
 class Location:
-    def __init__(self, map, display, camera):
-        self.map = map
+    def __init__(self, reader: MapReader, display, camera):
+        self.reader = reader
+        self.map = None
         self.display = display
         self.camera = camera
-
-        self.tiles_database = {}
-        self.load_tiles_database()
 
         self.player = pygame.sprite.GroupSingle()
         self.all_sprites = pygame.sprite.Group()
 
         self.build()
 
-    def load_tiles_database(self):
-        # TODO load all resources for map
-        #   resource must be with additional information
-        grass_img = load_image('grass2', STATIC_IMAGES_DIR).convert_alpha()
-        self.tiles_database['G'] = grass_img
-
     def build(self):
         """
         Method for precache map etc.
         """
-        self.builded = False
+        self.map = self.reader.read()
+
+        for layer in self.map.layers:
+            for i, tile_id in enumerate(layer.data):
+                if tile_id:
+                    x = i % layer.height
+                    y = i // layer.width
+                    tile_ = self.map.tile_mapping[tile_id]
+                    tile = TileSprite(grid_coordinates=(x, y), surface=tile_.surface)
+                    self.all_sprites.add(tile)
+            break
+
+        player_sprite = PlayerSprite(grid_coordinates=(0, 0), location=self)
+        self.player.add(player_sprite)
+        self.all_sprites.add(player_sprite)
 
     def update(self):
-        # TODO get color from map
-        self.display.fill((0, 0, 0))
+        self.display.fill(self.map.background_color)
         self.get_inputs()
         self.camera.update()
-
-        # TODO refactor
-        if not self.builded:
-            for x, row in enumerate(self.map):
-                for y, tile_sign in enumerate(row):
-                    # if tile_sign[0] in self.tiles_database:
-                    #     tile = self.tiles_database[tile_sign[0]]
-                    #     pos = cartesian_to_isometric((Vector2(x, y) * CELL_SIDE) - Vector2(10, 10))
-                    #     self.display.blit(tile, self.camera.shift + pos)
-                    if tile_sign[0] in self.tiles_database:
-                        tile = TileSprite(grid_coordinates=(x, y), name='grass2')
-                        self.all_sprites.add(tile)
-                    if tile_sign[-1] == 'P' and self.player.sprite is None:
-                        player_sprite = PlayerSprite(grid_coordinates=(x, y), location=self)
-                        self.player.add(player_sprite)
-                        self.all_sprites.add(player_sprite)
-            self.builded = True
 
         self.all_sprites.update(shift=self.camera.shift)
         self.all_sprites.draw(self.display)
