@@ -1,9 +1,9 @@
-from typing import Protocol
+from typing import Protocol, Tuple
 
 import pygame
 from pygame.math import Vector2
 
-from .constants import Action, CAMERA_SPEED, CELL_CENTER, CELL_SIDE
+from .constants import Action, CAMERA_SPEED
 from .sprite.player import PlayerSprite
 from .sprite.tile import TileSprite
 from .utils import map
@@ -16,6 +16,11 @@ class MapReader(Protocol):
 
 
 class Location:
+    CELL_WIDTH: int
+    CELL_HEIGHT: int
+    CELL_SIDE: int  # Cartesian cell width
+    CELL_CENTER: Tuple[int, int]
+
     def __init__(self, reader: MapReader, display, camera):
         self.reader = reader
         self.map = None
@@ -23,38 +28,51 @@ class Location:
         self.camera = camera
 
         self.player = pygame.sprite.GroupSingle()
-        self.all_sprites = pygame.sprite.Group()
+        self.sprite_groups = []
 
         self.build()
 
     def build(self):
         """
-        Method for precache map etc.
+        Build map
         """
         self.map = self.reader.read()
+        self.CELL_WIDTH = self.map.tile_width
+        self.CELL_HEIGHT = int(self.CELL_WIDTH / 2)
+        self.CELL_SIDE = int(self.CELL_WIDTH / 2)  # Cartesian cell width
+        self.CELL_CENTER = (int(self.CELL_WIDTH / 2), int(self.CELL_HEIGHT / 2))
 
+        groups = []
         for layer in self.map.layers:
+            group = pygame.sprite.Group()
             for i, tile_id in enumerate(layer.data):
                 if tile_id:
                     x = i % layer.height
                     y = i // layer.width
-                    tile_ = self.map.tile_mapping[tile_id]
-                    tile = TileSprite(grid_coordinates=(x, y), surface=tile_.surface)
-                    self.all_sprites.add(tile)
-            break
+                    tile = self.map.tile_mapping[tile_id]
+                    tile_sprite = TileSprite(
+                        grid_coordinates=(x, y),
+                        tile=tile,
+                        cell_side=self.CELL_SIDE,
+                        alignment=layer.alignment
+                    )
+                    group.add(tile_sprite)
+            groups.append(group)
 
         player_sprite = PlayerSprite(grid_coordinates=(0, 0), location=self)
         self.player.add(player_sprite)
-        self.all_sprites.add(player_sprite)
+        groups.insert(1, self.player)  # insert player after ground layer
+        self.sprite_groups = groups
 
     def update(self):
         self.display.fill(self.map.background_color)
         self.get_inputs()
         self.camera.update()
 
-        self.all_sprites.update(shift=self.camera.shift)
-        self.all_sprites.draw(self.display)
-        self.player.draw(self.display)
+        for group in self.sprite_groups:
+            group.update(shift=self.camera.shift)
+            # TODO drawing order is important
+            group.draw(self.display)
 
     def get_inputs(self):
         left, middle, right = pygame.mouse.get_pressed()
@@ -62,7 +80,7 @@ class Location:
             print(
                 isometric_to_grid_coordinates(
                     self.get_coordinates_under_cursor(),
-                    cell_side=CELL_SIDE,
+                    cell_side=self.CELL_SIDE,
                 )
             )
 
@@ -73,7 +91,7 @@ class Location:
         """
         Calculate "world" isometric coordinates
         """
-        return isometric + Vector2(CELL_CENTER) - self.camera.shift
+        return isometric + Vector2(self.CELL_CENTER) - self.camera.shift
 
 
 class Camera:

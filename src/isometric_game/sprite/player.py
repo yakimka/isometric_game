@@ -1,8 +1,8 @@
 import pygame
 from pygame.math import Vector2
 
-from isometric_game import constants, STATIC_IMAGES_DIR
-from isometric_game.constants import Action, CELL_SIDE
+from isometric_game import STATIC_IMAGES_DIR
+from isometric_game.constants import Action
 from isometric_game.utils.asset import load_image
 from isometric_game.utils.grid import (
     cartesian_to_isometric, cell_origin_coordinates, grid_to_isometric_coordinates,
@@ -23,7 +23,7 @@ class PlayerSprite(pygame.sprite.Sprite):
 
         screen_coordinates = grid_to_isometric_coordinates(
             grid=grid_coordinates,
-            cell_side=constants.CELL_SIDE,
+            cell_side=self.location.CELL_SIDE,
             shift=self.shift,
         )
         self.pos = screen_coordinates + player_image_offset
@@ -82,10 +82,10 @@ class PlayerSprite(pygame.sprite.Sprite):
 
                 self.last_pos = cell_origin_coordinates(
                     self.location.screen_to_world_coordinates(self.rect.midbottom),
-                    cell_side=CELL_SIDE,
+                    cell_side=self.location.CELL_SIDE,
                 ) + Vector2(0, self.image_bottom_offset)
                 self.next_pos = (
                         self.last_pos
-                        + cartesian_to_isometric(self.direction * CELL_SIDE)
+                        + cartesian_to_isometric(self.direction * self.location.CELL_SIDE)
                         + self.shift
                 )

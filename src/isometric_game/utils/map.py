@@ -25,6 +25,8 @@ class Reader:
             raise ValueError('Sorry, infinite maps are not supported yet')
         if map_data['orientation'] != 'isometric':
             raise ValueError('Sorry, supports only isometric maps for now')
+        if int(map_data['tilewidth'] / 2) != map_data['tileheight']:
+            raise ValueError('tilewidth must be twice as big as tileheight')
 
         map_data['tilesets'] = [self._read_tileset_data(item) for item in map_data['tilesets']]
 
@@ -53,25 +55,16 @@ class Reader:
                     data=layer['data'],
                     width=layer['width'],
                     height=layer['height'],
-                    x=layer['x'],
-                    y=layer['y'],
-                    offset=(layer.get('offsetx', 0), layer.get('offsety', 0)),
+                    **{prop['name']: prop['value'] for prop in layer.get('properties', [])},
                 )
             )
 
         tilesets = []
         for tileset in map_data['tilesets']:
-            tiles = []
-            for tile in tileset['tiles']:
-                tiles.append(
-                    Tile(
+            tiles = [Tile(
                         id=tile['id'],
                         image=self.maps_dir / tile['image'],
-                        width=tile['imagewidth'],
-                        height=tile['imageheight'],
-                        offset=(tileset['tileoffset']['x'], tileset['tileoffset']['y']),
-                    )
-                )
+                    ) for tile in tileset['tiles']]
             tilesets.append(
                 Tileset(
                     name=tileset['name'],
@@ -122,9 +115,7 @@ class Layer:
     data: List[int]
     width: int
     height: int
-    x: int
-    y: int
-    offset: Tuple[int, int]
+    alignment: str
 
 
 @dataclasses.dataclass()
@@ -142,9 +133,6 @@ class Tileset:
 class Tile:
     id: int
     image: Path
-    width: int
-    height: int
-    offset: Tuple[int, int]
     surface: Surface = dataclasses.field(init=False)
 
     def __post_init__(self):
