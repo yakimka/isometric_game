@@ -1,7 +1,7 @@
 import dataclasses
 import json
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
 from pygame.surface import Surface
 
@@ -47,35 +47,29 @@ class Reader:
         return tileset_data
 
     def _convert_map_data(self, map_data) -> 'Map':
-        layers = []
-        for layer in map_data['layers']:
-            layers.append(
-                Layer(
-                    name=layer['name'],
-                    data=layer['data'],
-                    width=layer['width'],
-                    height=layer['height'],
-                    **{prop['name']: prop['value'] for prop in layer.get('properties', [])},
-                )
-            )
-
-        tilesets = []
+        tile_mapping = {}
         for tileset in map_data['tilesets']:
-            tiles = [Tile(
-                        id=tile['id'],
-                        image=self.maps_dir / tile['image'],
-                    ) for tile in tileset['tiles']]
-            tilesets.append(
-                Tileset(
-                    name=tileset['name'],
-                    margin=tileset['margin'],
-                    spacing=tileset['spacing'],
-                    tile_width=tileset['tilewidth'],
-                    tile_height=tileset['tileheight'],
-                    tile_offset=(tileset['tileoffset']['x'], tileset['tileoffset']['y']),
-                    tiles=tiles,
-                )
+            for tile in tileset['tiles']:
+                if tile['id'] not in tile_mapping:
+                    tile_mapping[tile['id']] = Tile(
+                        width=tileset['tilewidth'],
+                        height=tileset['tileheight'],
+                        surface=load_image(self.maps_dir / tile['image']),
+                    )
+
+        layers = [
+            Layer(
+                name=layer['name'],
+                data=[tile_mapping.get(tile_id) for tile_id in layer['data']],
+                width=layer['width'],
+                height=layer['height'],
+                **{
+                    prop['name']: prop['value']
+                    for prop in layer.get('properties', [])
+                },
             )
+            for layer in map_data['layers']
+        ]
 
         return Map(
             width=map_data['width'],
@@ -84,12 +78,8 @@ class Reader:
             layers=layers,
             tile_width=map_data['tilewidth'],
             tile_height=map_data['tileheight'],
-            tilesets=tilesets,
         )
 
-
-# TODO: add from_dict method for dataclasses
-#   maybe delete tilesets, tiles_mapping and replace ids in layers with tile objects
 
 @dataclasses.dataclass()
 class Map:
@@ -99,41 +89,19 @@ class Map:
     layers: List['Layer']
     tile_width: int
     tile_height: int
-    tilesets: List['Tileset']
-    tile_mapping: dict = dataclasses.field(init=False)
-
-    def __post_init__(self):
-        self.tile_mapping = {}
-        for tileset in self.tilesets:
-            for tile in tileset.tiles:
-                self.tile_mapping[tile.id] = tile
 
 
 @dataclasses.dataclass()
 class Layer:
     name: str
-    data: List[int]
+    data: List['Tile']
     width: int
     height: int
     alignment: str
 
 
 @dataclasses.dataclass()
-class Tileset:
-    name: str
-    margin: int
-    spacing: int
-    tile_width: int
-    tile_height: int
-    tile_offset: Tuple[int, int]
-    tiles: List['Tile']
-
-
-@dataclasses.dataclass()
 class Tile:
-    id: int
-    image: Path
-    surface: Surface = dataclasses.field(init=False)
-
-    def __post_init__(self):
-        self.surface = load_image(self.image)
+    width: int
+    height: int
+    surface: Surface

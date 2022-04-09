@@ -40,16 +40,15 @@ class Location:
         self.CELL_WIDTH = self.map.tile_width
         self.CELL_HEIGHT = int(self.CELL_WIDTH / 2)
         self.CELL_SIDE = int(self.CELL_WIDTH / 2)  # Cartesian cell width
-        self.CELL_CENTER = (int(self.CELL_WIDTH / 2), int(self.CELL_HEIGHT / 2))
+        self.CELL_CENTER = int(self.CELL_WIDTH / 2), self.CELL_HEIGHT // 2
 
         groups = []
         for layer in self.map.layers:
             group = pygame.sprite.Group()
-            for i, tile_id in enumerate(layer.data):
-                if tile_id:
+            for i, tile in enumerate(layer.data):
+                if tile:
                     x = i % layer.height
                     y = i // layer.width
-                    tile = self.map.tile_mapping[tile_id]
                     tile_sprite = TileSprite(
                         grid_coordinates=(x, y),
                         tile=tile,

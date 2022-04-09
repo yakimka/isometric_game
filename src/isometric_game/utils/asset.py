@@ -13,3 +13,8 @@ def load_image(path: Path, convert=True):
     if convert:
         image = image.convert_alpha()
     return image
+
+
+def load_cut_image(path: Path, x, y, w, h, convert=True):
+    image = load_image(path, convert)
+    return image.subsurface((x, y, w, h))
