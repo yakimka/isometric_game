@@ -14,7 +14,7 @@ class Game:
         self.camera = Camera()
         # TODO settings and injecting it to another classes
 
-        map_reader = map.Reader('test_level.json', MAPS_DIR)
+        map_reader = map.Reader('test_level.tmj', MAPS_DIR)
         self.location = Location(
             reader=map_reader,
             display=self.display,

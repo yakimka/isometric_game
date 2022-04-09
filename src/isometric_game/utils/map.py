@@ -5,7 +5,8 @@ from typing import List
 
 from pygame.surface import Surface
 
-from .asset import load_image
+# TODO clear cache afted building
+from .asset import load_cut_images, load_image
 
 
 class Reader:
@@ -39,22 +40,34 @@ class Reader:
         with open(self.maps_dir / tileset['source']) as fp:
             tileset_data = json.load(fp)
 
-        firstgid = tileset['firstgid']
+        if tileset_data['type'] != 'tileset':
+            raise ValueError('Sorry, supports only tilesets for now')
 
-        for tile in tileset_data['tiles']:
-            tile['id'] += firstgid
+        for tile in tileset_data.get('tiles', []):
+            tile['id'] += tileset['firstgid']
+        if 'image' in tileset_data:
+            tileset_data['id_offset'] = tileset['firstgid']
 
         return tileset_data
 
     def _convert_map_data(self, map_data) -> 'Map':
         tile_mapping = {}
         for tileset in map_data['tilesets']:
-            for tile in tileset['tiles']:
-                if tile['id'] not in tile_mapping:
-                    tile_mapping[tile['id']] = Tile(
+            if 'tiles' in tileset:
+                for tile in tileset['tiles']:
+                    if tile['id'] not in tile_mapping:
+                        tile_mapping[tile['id']] = Tile(
+                            width=tileset['tilewidth'],
+                            height=tileset['tileheight'],
+                            surface=load_image(self.maps_dir / tile['image']),
+                        )
+            elif 'image' in tileset:
+                tiles = load_cut_images(self.maps_dir / tileset['image'], tileset['tilewidth'], tileset['tileheight'])
+                for i, surface in enumerate(tiles):
+                    tile_mapping[i + tileset['id_offset']] = Tile(
                         width=tileset['tilewidth'],
                         height=tileset['tileheight'],
-                        surface=load_image(self.maps_dir / tile['image']),
+                        surface=surface,
                     )
 
         layers = [
@@ -97,7 +110,8 @@ class Layer:
     data: List['Tile']
     width: int
     height: int
-    alignment: str
+    # TODO delete
+    alignment: str = 'midbottom'
 
 
 @dataclasses.dataclass()
